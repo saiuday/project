@@ -12,7 +12,7 @@ public class DBInit {
             String createTable = """
         CREATE TABLE IF NOT EXISTS bookings (
             id IDENTITY PRIMARY KEY,
-            customer_name VARCHAR(255),
+            customer_name VARCHAR(255) NOT NULL,
             date VARCHAR(50),
             time VARCHAR(50),
             people INT

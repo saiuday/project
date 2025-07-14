@@ -1,13 +1,11 @@
 package controller;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonIOException;
-import com.google.gson.JsonSyntaxException;
 import io.muserver.MuRequest;
 import io.muserver.MuResponse;
-import jakarta.ws.rs.core.Request;
-import jakarta.ws.rs.core.Response;
 import model.Booking;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import service.BookingService;
 
 import java.io.InputStreamReader;
@@ -16,23 +14,27 @@ import java.util.List;
 import java.util.Map;
 
 public class BookingController {
+    private static final Logger logger = LoggerFactory.getLogger(BookingController.class);
     private  final Gson gson = new Gson();
     private  final BookingService bookingService;
     public BookingController(BookingService bookingService) {
         this.bookingService = bookingService;
     }
 
-    public  void createBooking(MuRequest request, MuResponse response) throws SQLException {
+    public void createBooking(MuRequest request, MuResponse response) {
+        try (InputStreamReader reader = new InputStreamReader(request.inputStream().get())) {
+            Booking booking = gson.fromJson(reader, Booking.class);
 
-        try {
-            Booking booking = gson.fromJson(new InputStreamReader(request.inputStream().get())
-                    , Booking.class);
+            //Validate Booking object fields here
             bookingService.saveBooking(booking);
-            response.contentType("application/json");
-            response.write(new Gson().toJson(Map.of("status", "Booking saved successfully")));
 
+            respondSuccess(response, Map.of("status", "Booking saved successfully"));
+        } catch (SQLException e) {
+            logger.error("DB error while saving booking", e);
+            respondServerError(response, "Database error while saving booking");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error parsing booking or saving", e);
+            respondBadRequest(response, "Invalid booking payload or internal error");
         }
     }
 
@@ -40,34 +42,52 @@ public class BookingController {
         try {
             List<Booking> bookings = bookingService.getBookingsByDate(date);
             if (bookings == null || bookings.isEmpty()) {
-                writeNoBookingsResponse(response, date);
+                respondNotFound(response, Map.of(
+                        "status", "No bookings found",
+                        "date", date
+                ));
             } else {
-                writeSuccessResponse(response, bookings);
+                respondSuccess(response, Map.of(
+                        "status", "success",
+                        "bookings", bookings
+                ));
             }
         } catch (Exception e) {
             e.printStackTrace();
-            writeErrorResponse(response, "Failed to fetch bookings");
+            ErrorResponse(response, "Failed to fetch bookings");
         }
     }
 
-    private void writeSuccessResponse(MuResponse response, List<Booking> bookings) {
-        response.contentType("application/json");
-        response.write(gson.toJson(bookings));
+    private void respondSuccess(MuResponse response, Object body) {
+        response.status(200);
+        response.headers().set("Content-Type", "application/json");
+        response.write(gson.toJson(body));
     }
 
-    private void writeNoBookingsResponse(MuResponse response, String date) {
-        response.status(404);
-        response.contentType("application/json");
-        response.write(gson.toJson(Map.of(
-                "status", "No bookings found",
-                "date", date
-        )));
+    private void respondBadRequest(MuResponse response, String message) {
+        response.status(400);
+        response.headers().set("Content-Type", "application/json");
+        response.write(gson.toJson(Map.of("error", message)));
     }
-    private void writeErrorResponse(MuResponse response, String errorMessage) {
+
+    private void respondNotFound(MuResponse response, Object body) {
+        response.status(404);
+        response.headers().set("Content-Type", "application/json");
+        response.write(gson.toJson(body));
+    }
+
+    private void respondServerError(MuResponse response, String message) {
+        response.status(500);
+        response.headers().set("Content-Type", "application/json");
+        response.write(gson.toJson(Map.of("error", message)));
+    }
+
+    private void ErrorResponse(MuResponse response, String errorMessage) {
         response.status(500);
         response.contentType("application/json");
         response.write(gson.toJson(Map.of(
                 "error", errorMessage
         )));
     }
+
 }
