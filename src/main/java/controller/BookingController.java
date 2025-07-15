@@ -7,6 +7,7 @@ import model.Booking;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.BookingService;
+import utility.TimeSlot;
 
 import java.io.InputStreamReader;
 import java.sql.SQLException;
@@ -25,10 +26,14 @@ public class BookingController {
         try (InputStreamReader reader = new InputStreamReader(request.inputStream().get())) {
             Booking booking = gson.fromJson(reader, Booking.class);
 
+            if(!(TimeSlot.isValid(booking.getTime()))){
+                respondBadRequest(response,"Invalid time Allowed Values are: 10:00, 12:00,...20:00");
+            }
+
             //Validate Booking object fields here
             bookingService.saveBooking(booking);
 
-            respondSuccess(response, Map.of("status", "Booking saved successfully"));
+            respondSuccess(response, Map.of("status", "Table reserved  successfully for two hours"));
         } catch (SQLException e) {
             logger.error("DB error while saving booking", e);
             respondServerError(response, "Database error while saving booking");
