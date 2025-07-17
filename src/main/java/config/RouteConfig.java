@@ -1,10 +1,7 @@
 package config;
 
 import controller.BookingController;
-import io.muserver.Method;
-import io.muserver.MuResponse;
-import io.muserver.MuServerBuilder;
-import io.muserver.MuRequest;
+import io.muserver.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.BookingService;
@@ -13,6 +10,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 import static filters.FilterWrapper.wrap;
 
@@ -29,6 +27,28 @@ public class RouteConfig {
                 wrap(this::handleCreateBooking));
         serverBuilder.addHandler(Method.GET, "/bookings/{date}",
                 wrap(this::handleGetBookingsByDate));
+    }
+
+
+    public void configureRoutesAsync(MuServerBuilder serverBuilder) {
+        serverBuilder.addHandler(Method.POST, "/booking",
+
+                wrap((request, response, pathParams) ->{
+
+                    AsyncHandle async= request.handleAsync();
+                    Executors.newSingleThreadExecutor().submit(()->{
+                        try{
+                            handleCreateBooking(request,response,pathParams);
+                        }
+                        catch(Exception ex){
+                            handleError(response, ex);
+                        }
+                        finally {
+                            async.complete();
+                        }
+
+                    });
+                }));
     }
     private void handleCreateBooking(MuRequest request, MuResponse response,Map<String, String> params) {
         try {

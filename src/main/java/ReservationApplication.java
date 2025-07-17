@@ -37,6 +37,8 @@ public class ReservationApplication {
         MuServerBuilder builder= MuServerBuilder
                 .muServer().withHttpPort(8081);
 
+        ///I would use configureRoutesAsync here
+
         routeConfig.configureRoutes(builder);
 
         builder.addHandler(Method.GET, "/metrics",

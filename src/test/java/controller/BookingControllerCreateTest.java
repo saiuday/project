@@ -68,7 +68,7 @@ public class BookingControllerCreateTest {
         bookingController.createBooking(request, response);
 
         // Assert
-        assertTrue(output.toString().contains("Booking saved successfully"));
+        assertTrue(output.toString().contains("Table reserved  successfully for two hours"));
         verify(response).status(200);
         verify(response.headers()).set(eq("Content-Type"), eq("application/json"));
     }
